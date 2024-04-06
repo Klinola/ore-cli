@@ -4,8 +4,7 @@ use std::{
     time::Duration,
 };
 
-use chrono::{Duration as ChronoDuration, Utc};
-use ore::{self, BUS_ADDRESSES, BUS_COUNT, EPOCH_DURATION, START_AT};
+use ore::{self, BUS_ADDRESSES, BUS_COUNT, EPOCH_DURATION};
 use solana_client::client_error::ClientErrorKind;
 use solana_sdk::{
     keccak::{hashv, Hash as KeccakHash},
@@ -35,7 +34,7 @@ impl Miner {
             let proof = get_proof(self.cluster.clone(), signer.pubkey()).await;
 
             // Escape sequence that clears the screen and the scrollback buffer
-            stdout.write_all(b"\x1b[2J\x1b[3J\x1b[H").ok();
+            //stdout.write_all(b"\x1b[2J\x1b[3J\x1b[H").ok();
             stdout
                 .write_all(format!("Searching for valid hash...\n").as_bytes())
                 .ok();
@@ -184,17 +183,17 @@ impl Miner {
                                 if found_solution.load(std::sync::atomic::Ordering::Relaxed) {
                                     return;
                                 }
-                                if n == 0 {
-                                    stdout
-                                        .write_all(
-                                            format!("\r{}", next_hash.to_string()).as_bytes(),
-                                        )
-                                        .ok();
-                                }
+                                //if n == 0 {
+                                //    stdout
+                                //        .write_all(
+                                //            format!("\r{}", next_hash.to_string()).as_bytes(),
+                                //        )
+                                //        .ok();
+                                //}
                             }
                             if next_hash.le(&difficulty) {
                                 stdout
-                                    .write_all(format!("\r{}", next_hash.to_string()).as_bytes())
+                                    .write_all(format!("\r✨Found hash:{}", next_hash.to_string()).as_bytes())
                                     .ok();
                                 found_solution.store(true, std::sync::atomic::Ordering::Relaxed);
                                 let mut w_solution = solution.lock().expect("failed to lock mutex");

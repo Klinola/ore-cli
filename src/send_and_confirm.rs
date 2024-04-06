@@ -141,14 +141,14 @@ impl Miner {
         // Loop
         let mut attempts = 0;
         loop {
-            println!("Attempt: {}", attempts + 1);
+            println!("\rAttempt: {}", attempts + 1);
             match client.send_transaction_with_config(&tx, send_cfg).await {
                 Ok(sig) => {
-                    println!("\n👻Transaction sent successfully🎉: {}", sig);
+                    println!("\r👻Transaction sent successfully🎉: {}", sig);
                     
                     let mut rng = thread_rng();
                     let wait_secs: u64 = rng.gen_range(0..=3);
-                    println!("\nCooling down for {} sec ✨", wait_secs);
+                    println!("\rCooling down for {} sec ✨", wait_secs);
                     
                     sleep(Duration::from_secs(wait_secs)).await;
                     result = Ok(sig);
