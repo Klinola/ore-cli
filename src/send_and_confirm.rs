@@ -153,13 +153,11 @@ impl Miner {
                     println!("Cooling down for {} sec ✨", wait_secs);
                     
                     sleep(Duration::from_secs(wait_secs)).await;
-                    // If the transaction is sent successfully, set the result to Ok and break the loop.
                     result = Ok(sig);
                     break;
                 },
                 Err(err) => {
                     println!("Error sending transaction: {:?}", err);
-                    // If there's an error, you might want to update the result with the latest error
                     result = Err(err);
                 }
             }
@@ -167,7 +165,6 @@ impl Miner {
             attempts += 1;
             if attempts >= MAX_ATTEMPTS {
                 println!("Reached max attempts. Stopping.");
-                // Break the loop if the maximum number of attempts is reached
                 break;
             }
 
@@ -181,8 +178,6 @@ impl Miner {
                 },
                 Err(e) => {
                     println!("Failed to get latest blockhash: {:?}", e);
-                    // Decide how to handle this situation. For example, you might want to try again or break the loop with an error.
-                    // For now, let's set the result to an error and break the loop.
                     result = Err(e);
                     break;
                 }
