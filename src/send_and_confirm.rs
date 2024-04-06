@@ -27,6 +27,8 @@ const GATEWAY_RETRIES: usize = 10;
 const CONFIRM_RETRIES: usize = 10;
 
 impl Miner {
+
+    
     pub async fn send_and_confirm(&self, ixs: &[Instruction]) -> ClientResult<Signature> {
         let mut stdout = stdout();
         let signer = self.signer();
@@ -133,41 +135,61 @@ impl Miner {
             });
         };
 
+        let mut result: ClientResult<Signature> = Err(ClientError {
+            request: None,
+            kind: ClientErrorKind::Custom("Max attempts reached without success".into()),
+        });
+
         // Loop
         let mut attempts = 0;
-        const MAX_ATTEMPTS: u32 = 20; 
         loop {
             println!("Attempt: {}", attempts + 1);
             match client.send_transaction_with_config(&tx, send_cfg).await {
                 Ok(sig) => {
                     println!("👻Transaction sent successfully🎉: {}", sig);
-
+                    
                     let mut rng = thread_rng();
                     let wait_secs: u64 = rng.gen_range(0..=3);
                     println!("Cooling down for {} sec ✨", wait_secs);
-
+                    
                     sleep(Duration::from_secs(wait_secs)).await;
+                    // If the transaction is sent successfully, set the result to Ok and break the loop.
+                    result = Ok(sig);
+                    break;
                 },
                 Err(err) => {
                     println!("Error sending transaction: {:?}", err);
+                    // If there's an error, you might want to update the result with the latest error
+                    result = Err(err);
                 }
             }
-        
+
             attempts += 1;
             if attempts >= MAX_ATTEMPTS {
                 println!("Reached max attempts. Stopping.");
-                break; 
+                // Break the loop if the maximum number of attempts is reached
+                break;
             }
-        
-            let (hash, slot) = client.get_latest_blockhash_with_commitment(CommitmentConfig::confirmed()).await.unwrap();
-            send_cfg = RpcSendTransactionConfig {
-                skip_preflight: true,
-                preflight_commitment: Some(CommitmentLevel::Confirmed),
-                encoding: Some(UiTransactionEncoding::Base64),
-                max_retries: Some(RPC_RETRIES),
-                min_context_slot: Some(slot),
-            };
-            tx.sign(&[&signer], hash);
+
+            let latest_blockhash_result = client.get_latest_blockhash_with_commitment(CommitmentConfig::confirmed()).await;
+            match latest_blockhash_result {
+                Ok((new_hash, new_slot)) => {
+                    hash = new_hash;
+                    slot = new_slot;
+                    send_cfg.min_context_slot = Some(slot);
+                    tx.sign(&[&signer], hash);
+                },
+                Err(e) => {
+                    println!("Failed to get latest blockhash: {:?}", e);
+                    // Decide how to handle this situation. For example, you might want to try again or break the loop with an error.
+                    // For now, let's set the result to an error and break the loop.
+                    result = Err(e);
+                    break;
+                }
+            }
         }
+
+        // After the loop, return the result
+        result
     }
 }
