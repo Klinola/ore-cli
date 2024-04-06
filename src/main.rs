@@ -17,7 +17,7 @@ mod utils;
 use std::sync::Arc;
 
 use clap::{command, Parser, Subcommand};
-use solana_sdk::signature::{Keypair};
+use solana_sdk::signature::Keypair;
 struct Miner {
     pub keypair_private_key: Option<String>,
     pub priority_fee: u64,

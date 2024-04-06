@@ -16,7 +16,7 @@ use crate::{
     utils::{get_clock_account, get_proof, get_treasury},
     Miner,
 };
-use rand::{thread_rng, Rng};
+
 impl Miner {
     pub async fn mine(&self, threads: u64) {
         // Register, if needed.
@@ -34,7 +34,7 @@ impl Miner {
             let proof = get_proof(self.cluster.clone(), signer.pubkey()).await;
 
             // Escape sequence that clears the screen and the scrollback buffer
-            //stdout.write_all(b"\x1b[2J\x1b[3J\x1b[H").ok();
+            stdout.write_all(b"\x1b[2J\x1b[3J\x1b[H").ok();
             stdout
                 .write_all(format!("Searching for valid hash...\n").as_bytes())
                 .ok();
@@ -46,8 +46,7 @@ impl Miner {
             stdout.flush().ok();
 
             // Submit mine tx.
-            let mut rng = thread_rng();
-            let mut bus_id = rng.gen_range(2..=7);
+            let mut bus_id = 0;
             let mut invalid_busses: Vec<u8> = vec![];
             let mut needs_reset = false;
             'submit: loop {
@@ -172,8 +171,13 @@ impl Miner {
                     let mut stdout = stdout();
                     move || {
                         let n = u64::MAX.saturating_div(threads).saturating_mul(i);
+
+                        let nonce_range = u64::MAX / threads + 1;
+                        let start = n;
+                        let end = start + nonce_range;
+                        let mut nonce = start;
+
                         let mut next_hash: KeccakHash;
-                        let mut nonce: u64 = n;
                         loop {
                             next_hash = hashv(&[
                                 hash.to_bytes().as_slice(),
@@ -184,22 +188,18 @@ impl Miner {
                                 if found_solution.load(std::sync::atomic::Ordering::Relaxed) {
                                     return;
                                 }
-                                //if n == 0 {
-                                //    stdout
-                                //        .write_all(
-                                //            format!("\r{}", next_hash.to_string()).as_bytes(),
-                                //        )
-                                //        .ok();
-                                //}
-                            }
+                             }
                             if next_hash.le(&difficulty) {
                                 stdout
-                                    .write_all(format!("\r✨Found hash:{}", next_hash.to_string()).as_bytes())
+                                    .write_all(format!("\rFound hash ✨{}", next_hash.to_string()).as_bytes())
                                     .ok();
                                 found_solution.store(true, std::sync::atomic::Ordering::Relaxed);
                                 let mut w_solution = solution.lock().expect("failed to lock mutex");
                                 *w_solution = (next_hash, nonce);
                                 return;
+                            }
+                            if nonce > end {
+                                break;
                             }
                             nonce += 1;
                         }
