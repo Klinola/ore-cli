@@ -1,5 +1,5 @@
 use std::{
-    io::{stdout, Write},
+    io::stdout,
     time::Duration,
 };
 
@@ -23,14 +23,12 @@ use rand::{thread_rng, Rng};
 use crate::Miner;
 
 const RPC_RETRIES: usize = 1;
-const GATEWAY_RETRIES: usize = 10;
-const CONFIRM_RETRIES: usize = 10;
 
 impl Miner {
 
     
     pub async fn send_and_confirm(&self, ixs: &[Instruction]) -> ClientResult<Signature> {
-        let mut stdout = stdout();
+        let mut _stdout = stdout();
         let signer = self.signer();
         let client =
             RpcClient::new_with_commitment(self.cluster.clone(), CommitmentConfig::confirmed());
@@ -146,11 +144,11 @@ impl Miner {
             println!("Attempt: {}", attempts + 1);
             match client.send_transaction_with_config(&tx, send_cfg).await {
                 Ok(sig) => {
-                    println!("👻Transaction sent successfully🎉: {}", sig);
+                    println!("\n👻Transaction sent successfully🎉: {}", sig);
                     
                     let mut rng = thread_rng();
                     let wait_secs: u64 = rng.gen_range(0..=3);
-                    println!("Cooling down for {} sec ✨", wait_secs);
+                    println!("\nCooling down for {} sec ✨", wait_secs);
                     
                     sleep(Duration::from_secs(wait_secs)).await;
                     result = Ok(sig);
@@ -158,9 +156,15 @@ impl Miner {
                 },
                 Err(err) => {
                     println!("Error sending transaction: {:?}", err);
+                    if let ClientErrorKind::Custom(err_msg) = &err.kind {
+                        if err_msg == "Sim failed" {
+                            println!("Simulation failed, exiting...");
+                            return Err(err);
+                        }
+                    }
                     result = Err(err);
                 }
-            }
+            }                
 
             attempts += 1;
             if attempts >= MAX_ATTEMPTS {
@@ -183,8 +187,6 @@ impl Miner {
                 }
             }
         }
-
-        // After the loop, return the result
         result
     }
 }
