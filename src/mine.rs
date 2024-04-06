@@ -16,7 +16,7 @@ use crate::{
     utils::{get_clock_account, get_proof, get_treasury},
     Miner,
 };
-
+use rand::{thread_rng, Rng};
 impl Miner {
     pub async fn mine(&self, threads: u64) {
         // Register, if needed.
@@ -46,7 +46,8 @@ impl Miner {
             stdout.flush().ok();
 
             // Submit mine tx.
-            let mut bus_id = 0;
+            let mut rng = thread_rng();
+            let mut bus_id = rng.gen_range(2..=8);
             let mut invalid_busses: Vec<u8> = vec![];
             let mut needs_reset = false;
             'submit: loop {
