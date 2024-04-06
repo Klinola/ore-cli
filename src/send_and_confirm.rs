@@ -135,39 +135,39 @@ impl Miner {
 
         // Loop
         let mut attempts = 0;
-const MAX_ATTEMPTS: u32 = 20; 
-loop {
-    println!("Attempt: {}", attempts + 1);
-    match client.send_transaction_with_config(&tx, send_cfg).await {
-        Ok(sig) => {
-            println!("👻Transaction sent successfully🎉: {}", sig);
-            
-            let mut rng = thread_rng();
-            let wait_secs: u64 = rng.gen_range(0..=3);
-            println!("Cooling down for {} sec ✨", wait_secs);
-            
-            sleep(Duration::from_secs(wait_secs)).await;
-        },
-        Err(err) => {
-            println!("Error sending transaction: {:?}", err);
+        const MAX_ATTEMPTS: u32 = 20; 
+        loop {
+            println!("Attempt: {}", attempts + 1);
+            match client.send_transaction_with_config(&tx, send_cfg).await {
+                Ok(sig) => {
+                    println!("👻Transaction sent successfully🎉: {}", sig);
+
+                    let mut rng = thread_rng();
+                    let wait_secs: u64 = rng.gen_range(0..=3);
+                    println!("Cooling down for {} sec ✨", wait_secs);
+
+                    sleep(Duration::from_secs(wait_secs)).await;
+                },
+                Err(err) => {
+                    println!("Error sending transaction: {:?}", err);
+                }
+            }
+        
+            attempts += 1;
+            if attempts >= MAX_ATTEMPTS {
+                println!("Reached max attempts. Stopping.");
+                break; 
+            }
+        
+            let (hash, slot) = client.get_latest_blockhash_with_commitment(CommitmentConfig::confirmed()).await.unwrap();
+            send_cfg = RpcSendTransactionConfig {
+                skip_preflight: true,
+                preflight_commitment: Some(CommitmentLevel::Confirmed),
+                encoding: Some(UiTransactionEncoding::Base64),
+                max_retries: Some(RPC_RETRIES),
+                min_context_slot: Some(slot),
+            };
+            tx.sign(&[&signer], hash);
         }
     }
-
-    attempts += 1;
-    if attempts >= MAX_ATTEMPTS {
-        println!("Reached max attempts. Stopping.");
-        break; 
-    }
-
-    let (hash, slot) = client.get_latest_blockhash_with_commitment(CommitmentConfig::confirmed()).await.unwrap();
-    send_cfg = RpcSendTransactionConfig {
-        skip_preflight: true,
-        preflight_commitment: Some(CommitmentLevel::Confirmed),
-        encoding: Some(UiTransactionEncoding::Base64),
-        max_retries: Some(RPC_RETRIES),
-        min_context_slot: Some(slot),
-    };
-    tx.sign(&[&signer], hash);
 }
-
-    }}
