@@ -34,7 +34,7 @@ impl Miner {
             let proof = get_proof(self.cluster.clone(), signer.pubkey()).await;
 
             // Escape sequence that clears the screen and the scrollback buffer
-            stdout.write_all(b"\x1b[2J\x1b[3J\x1b[H").ok();
+            //stdout.write_all(b"\x1b[2J\x1b[3J\x1b[H").ok();
             stdout
                 .write_all(format!("Searching for valid hash...\n").as_bytes())
                 .ok();
