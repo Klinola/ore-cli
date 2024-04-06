@@ -47,7 +47,7 @@ impl Miner {
 
             // Submit mine tx.
             let mut rng = thread_rng();
-            let mut bus_id = rng.gen_range(2..=8);
+            let mut bus_id = rng.gen_range(2..=7);
             let mut invalid_busses: Vec<u8> = vec![];
             let mut needs_reset = false;
             'submit: loop {
