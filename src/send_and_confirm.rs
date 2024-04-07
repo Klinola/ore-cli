@@ -32,7 +32,8 @@ impl Miner {
         let signer = self.signer();
         let client =
             RpcClient::new_with_commitment(self.cluster.clone(), CommitmentConfig::confirmed());
-
+        let send_tx_client =
+            RpcClient::new_with_commitment(self.send_tx_cluster.clone(), CommitmentConfig::confirmed());
         // Build tx
         let mut attempts = 0;
         const MAX_ATTEMPTS: u8 = 3; // Maximum number of attempts before giving up
@@ -133,7 +134,7 @@ impl Miner {
             });
         };
 
-        let mut result: ClientResult<Signature> = Err(ClientError {
+        let mut clientresult: ClientResult<Signature> = Err(ClientError {
             request: None,
             kind: ClientErrorKind::Custom("Max attempts reached without success".into()),
         });
@@ -142,17 +143,15 @@ impl Miner {
         let mut attempts = 0;
         loop {
             println!("\rAttempt: {}", attempts + 1);
-            match client.send_transaction_with_config(&tx, send_cfg).await {
+            match send_tx_client.send_transaction_with_config(&tx, send_cfg).await {
                 Ok(sig) => {
                     println!("\r👻Transaction sent successfully🎉: {}", sig);
                     
                     let mut rng = thread_rng();
-                    let wait_secs: u64 = rng.gen_range(0..=3);
-                    println!("\rCooling down for {} sec ✨", wait_secs);
-                    
-                    sleep(Duration::from_secs(wait_secs)).await;
-                    result = Ok(sig);
-                    break;
+                    let wait_secs: f64 = rng.gen_range(0.0..=1.0);
+                    println!("\rCooling down for {:.2} sec ✨", wait_secs);
+                    sleep(Duration::from_secs_f64(wait_secs)).await;
+                    clientresult = Ok(sig);
                 },
                 Err(err) => {
                     println!("Error sending transaction: {:?}", err);
@@ -162,7 +161,7 @@ impl Miner {
                             return Err(err);
                         }
                     }
-                    result = Err(err);
+                    clientresult = Err(err);
                 }
             }                
 
@@ -182,11 +181,11 @@ impl Miner {
                 },
                 Err(e) => {
                     println!("Failed to get latest blockhash: {:?}", e);
-                    result = Err(e);
+                    clientresult = Err(e);
                     break;
                 }
             }
         }
-        result
+        clientresult
     }
 }

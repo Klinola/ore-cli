@@ -22,6 +22,7 @@ struct Miner {
     pub keypair_private_key: Option<String>,
     pub priority_fee: u64,
     pub cluster: String,
+    pub send_tx_cluster: String,
 }
 
 #[derive(Parser, Debug)]
@@ -34,6 +35,14 @@ struct Args {
         default_value = "https://api.mainnet-beta.solana.com"
     )]
     rpc: String,
+
+    #[arg(
+        long,
+        value_name = "SEND_TX_RPC",
+        help = "Network address of your RPC provider for sending transactions",
+        default_value = "https://mainnet.block-engine.jito.wtf"
+    )]
+    send_tx_rpc: String,
 
     #[arg(
         long,
@@ -161,8 +170,8 @@ async fn main() {
     // Initialize miner.
     let args = Args::parse();
     let cluster = args.rpc;
-    let miner = Arc::new(Miner::new(cluster.clone(), args.priority_fee, args.keypair));
-
+    let send_tx_cluster = args.send_tx_rpc;
+    let miner = Arc::new(Miner::new(cluster.clone(), send_tx_cluster.clone(), args.priority_fee, args.keypair));
     // Execute user command.
     match args.command {
         Commands::Balance(args) => {
@@ -199,11 +208,12 @@ async fn main() {
 }
 
 impl Miner {
-    pub fn new(cluster: String, priority_fee: u64, keypair_private_key: Option<String>) -> Self {
+    pub fn new(cluster: String, send_tx_cluster: String, priority_fee: u64, keypair_private_key: Option<String>) -> Self {
         Self {
             keypair_private_key,
             priority_fee,
             cluster,
+            send_tx_cluster,
         }
     }
 
