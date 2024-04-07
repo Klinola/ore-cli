@@ -1,7 +1,6 @@
 mod balance;
 mod busses;
 mod claim;
-mod cu_limits;
 #[cfg(feature = "admin")]
 mod initialize;
 mod mine;
@@ -18,10 +17,9 @@ mod utils;
 use std::sync::Arc;
 
 use clap::{command, Parser, Subcommand};
-use solana_sdk::signature::{read_keypair_file, Keypair};
-
+use solana_sdk::signature::Keypair;
 struct Miner {
-    pub keypair_filepath: Option<String>,
+    pub keypair_private_key: Option<String>,
     pub priority_fee: u64,
     pub cluster: String,
 }
@@ -33,24 +31,14 @@ struct Args {
         long,
         value_name = "NETWORK_URL",
         help = "Network address of your RPC provider",
-        global = true
+        default_value = "https://api.mainnet-beta.solana.com"
     )]
-    rpc: Option<String>,
-
-    #[clap(
-        global = true,
-        short = 'C',
-        long = "config",
-        id = "PATH",
-        help = "Filepath to config file."
-    )]
-    pub config_file: Option<String>,
+    rpc: String,
 
     #[arg(
         long,
-        value_name = "KEYPAIR_FILEPATH",
-        help = "Filepath to keypair to use",
-        global = true
+        value_name = "keypair_private_key",
+        help = "Filepath to keypair to use"
     )]
     keypair: Option<String>,
 
@@ -58,8 +46,7 @@ struct Args {
         long,
         value_name = "MICROLAMPORTS",
         help = "Number of microlamports to pay as priority fee per transaction",
-        default_value = "0",
-        global = true
+        default_value = "0"
     )]
     priority_fee: u64,
 
@@ -171,29 +158,10 @@ struct UpdateDifficultyArgs {}
 
 #[tokio::main]
 async fn main() {
-    let args = Args::parse();
-
-    // Load the config file from custom path, the default path, or use default config values
-    let cli_config = if let Some(config_file) = &args.config_file {
-        solana_cli_config::Config::load(config_file).unwrap_or_else(|_| {
-            eprintln!("error: Could not find config file `{}`", config_file);
-            std::process::exit(1);
-        })
-    } else if let Some(config_file) = &*solana_cli_config::CONFIG_FILE {
-        solana_cli_config::Config::load(config_file).unwrap_or_default()
-    } else {
-        solana_cli_config::Config::default()
-    };
-
     // Initialize miner.
-    let cluster = args.rpc.unwrap_or(cli_config.json_rpc_url);
-    let default_keypair = args.keypair.unwrap_or(cli_config.keypair_path);
-
-    let miner = Arc::new(Miner::new(
-        cluster.clone(),
-        args.priority_fee,
-        Some(default_keypair),
-    ));
+    let args = Args::parse();
+    let cluster = args.rpc;
+    let miner = Arc::new(Miner::new(cluster.clone(), args.priority_fee, args.keypair));
 
     // Execute user command.
     match args.command {
@@ -231,17 +199,17 @@ async fn main() {
 }
 
 impl Miner {
-    pub fn new(cluster: String, priority_fee: u64, keypair_filepath: Option<String>) -> Self {
+    pub fn new(cluster: String, priority_fee: u64, keypair_private_key: Option<String>) -> Self {
         Self {
-            keypair_filepath,
+            keypair_private_key,
             priority_fee,
             cluster,
         }
     }
 
     pub fn signer(&self) -> Keypair {
-        match self.keypair_filepath.clone() {
-            Some(filepath) => read_keypair_file(filepath).unwrap(),
+        match self.keypair_private_key.clone() {
+            Some(key) => Keypair::from_base58_string(&key),
             None => panic!("No keypair provided"),
         }
     }
