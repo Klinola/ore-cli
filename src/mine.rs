@@ -16,7 +16,7 @@ use crate::{
     utils::{get_clock_account, get_proof, get_treasury},
     Miner,
 };
-
+use rand::seq::SliceRandom;
 impl Miner {
     pub async fn mine(&self, threads: u64) {
         // Register, if needed.
@@ -46,7 +46,13 @@ impl Miner {
             stdout.flush().ok();
 
             // Submit mine tx.
-            let mut bus_id = 0;
+            // Use busses randomly so on each epoch, transactions don't pile on the same busses
+            let mut bus_ids: Vec<usize> = (0..BUS_COUNT).collect();
+            bus_ids.shuffle(&mut rand::thread_rng());
+
+            let mut bus_ix = 0;
+            let mut bus_id = bus_ids[bus_ix] as u8;
+
             let mut invalid_busses: Vec<u8> = vec![];
             let mut needs_reset = false;
             'submit: loop {
@@ -54,14 +60,17 @@ impl Miner {
                 if invalid_busses.len().eq(&(BUS_COUNT as usize)) {
                     // All busses are drained. Wait until next epoch.
                     std::thread::sleep(std::time::Duration::from_millis(1000));
+                    // All busses are empty, let;s start anew next time with fresh invalid_busses and bus_id
+                    break 'submit;
                 }
                 if invalid_busses.contains(&bus_id) {
                     println!("Bus {} is empty... ", bus_id);
-                    bus_id += 1;
-                    if bus_id.ge(&(BUS_COUNT as u8)) {
+                    bus_ix += 1;
+                    if bus_ix == BUS_COUNT {
                         std::thread::sleep(Duration::from_secs(1));
-                        bus_id = 0;
+                        bus_ix = 0;
                     }
+                    bus_id = bus_ids[bus_ix] as u8;
                 }
 
                 // Reset if epoch has ended
